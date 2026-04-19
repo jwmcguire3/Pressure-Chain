@@ -4,6 +4,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PressureChain.Core", "src\Core\PressureChain.Core.csproj", "{6B9138B3-D75F-4E9E-BC96-2E499CC41A89}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PressureChain", "PressureChain.csproj", "{A62E9B54-5FAD-4CCB-B793-5F6B55E4E9F5}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PressureChain.Core.Tests", "tests\Core.Tests\PressureChain.Core.Tests.csproj", "{D6F17D4D-29CA-4B7B-B8A4-E28EC09A90D2}"
 EndProject
 Global
@@ -16,6 +18,10 @@ Global
 		{6B9138B3-D75F-4E9E-BC96-2E499CC41A89}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B9138B3-D75F-4E9E-BC96-2E499CC41A89}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B9138B3-D75F-4E9E-BC96-2E499CC41A89}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A62E9B54-5FAD-4CCB-B793-5F6B55E4E9F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A62E9B54-5FAD-4CCB-B793-5F6B55E4E9F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A62E9B54-5FAD-4CCB-B793-5F6B55E4E9F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A62E9B54-5FAD-4CCB-B793-5F6B55E4E9F5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D6F17D4D-29CA-4B7B-B8A4-E28EC09A90D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D6F17D4D-29CA-4B7B-B8A4-E28EC09A90D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D6F17D4D-29CA-4B7B-B8A4-E28EC09A90D2}.Release|Any CPU.ActiveCfg = Release|Any CPU

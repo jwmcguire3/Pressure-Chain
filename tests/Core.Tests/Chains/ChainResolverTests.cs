@@ -117,6 +117,35 @@ public sealed class ChainResolverTests
     }
 
     [Fact]
+    public void Resolve_ChainedAmplifierExtendsFurtherThanEquivalentCell()
+    {
+        var source = West;
+        var amplifierCoord = Center;
+        var next = East;
+        var far = new HexCoord(1, 1);
+
+        var amplifierBoard = CreateBoard(
+            (source, CreateNode(NodeType.Cell, 100, connections: OpenOnly(HexDirection.E))),
+            (amplifierCoord, CreateNode(NodeType.Amplifier, 95, connections: OpenOnly(HexDirection.W, HexDirection.E))),
+            (next, CreateNode(NodeType.Cell, 70, connections: OpenOnly(HexDirection.W, HexDirection.SE))),
+            (far, CreateNode(NodeType.Cell, 84, connections: OpenOnly(HexDirection.NW))));
+
+        var standardBoard = CreateBoard(
+            (source, CreateNode(NodeType.Cell, 100, connections: OpenOnly(HexDirection.E))),
+            (amplifierCoord, CreateNode(NodeType.Cell, 95, connections: OpenOnly(HexDirection.W, HexDirection.E))),
+            (next, CreateNode(NodeType.Cell, 70, connections: OpenOnly(HexDirection.W, HexDirection.SE))),
+            (far, CreateNode(NodeType.Cell, 84, connections: OpenOnly(HexDirection.NW))));
+
+        var amplifierResolution = _resolver.Resolve(amplifierBoard, source);
+        var standardResolution = _resolver.Resolve(standardBoard, source);
+
+        Assert.Equal(4, amplifierResolution.TotalBurstCount);
+        Assert.Equal(2, standardResolution.TotalBurstCount);
+        Assert.Equal(0, amplifierResolution.FinalBoard.NodeAt(far).Pressure);
+        Assert.Equal(84, standardResolution.FinalBoard.NodeAt(far).Pressure);
+    }
+
+    [Fact]
     public void Resolve_TerminatesWhenNoNewBurstsAreProduced()
     {
         var board = CreateBoard(

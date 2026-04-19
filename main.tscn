@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Presentation/LevelController.cs" id="1_a7w0j"]
+[ext_resource type="Script" path="res://src/Presentation/BoardNode.cs" id="2_4qhvd"]
+
+[node name="LevelController" type="Node2D"]
+script = ExtResource("1_a7w0j")
+
+[node name="BoardNode" type="Node2D" parent="."]
+position = Vector2(640, 380)
+script = ExtResource("2_4qhvd")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 520.0
+offset_bottom = 120.0
+theme_override_font_sizes/font_size = 24
+text = "Loading level..."
