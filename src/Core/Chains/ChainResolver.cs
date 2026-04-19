@@ -5,11 +5,16 @@ namespace PressureChain.Core.Chains;
 
 public sealed class ChainResolver
 {
-    public ChainResolution Resolve(PressureChain.Core.Board.Board initial, HexCoord triggerOrigin)
+    public ChainResolution Resolve(PressureChain.Core.Board.Board initial, HexCoord triggerOrigin, int? initialReleasePressureOverride = null)
     {
         ArgumentNullException.ThrowIfNull(initial);
 
         _ = initial.NodeAt(triggerOrigin);
+
+        if (initialReleasePressureOverride is < 0 or > 200)
+        {
+            throw new ArgumentOutOfRangeException(nameof(initialReleasePressureOverride), "Initial release pressure must be between 0 and 200.");
+        }
 
         var triggerNode = initial.NodeAt(triggerOrigin);
         if (triggerNode.Type == NodeType.Bulwark)
@@ -17,7 +22,7 @@ public sealed class ChainResolver
             throw new InvalidOperationException("Bulwarks cannot burst.");
         }
 
-        if (triggerNode.Pressure < 100)
+        if (triggerNode.Pressure < 100 && initialReleasePressureOverride is null)
         {
             throw new InvalidOperationException("Trigger node must already be at burst pressure.");
         }
@@ -34,9 +39,19 @@ public sealed class ChainResolver
             var pressureDeltas = new Dictionary<HexCoord, int>();
             foreach (var burst in currentWave)
             {
-                ApplyDelta(pressureDeltas, burst.Origin, -board.NodeAt(burst.Origin).Pressure);
+                var burstNode = board.NodeAt(burst.Origin);
+                var releasedPressure = GetReleasePressure(
+                    burstNode,
+                    burst.WasChained,
+                    burst.Origin == triggerOrigin && burst.Wave == 0 ? initialReleasePressureOverride : null);
+                var drainedPressure = GetDrainedPressure(
+                    burstNode,
+                    burst.WasChained,
+                    burst.Origin == triggerOrigin && burst.Wave == 0 ? initialReleasePressureOverride : null);
 
-                foreach (var transfer in EnumerateTransfers(board, burst))
+                ApplyDelta(pressureDeltas, burst.Origin, -drainedPressure);
+
+                foreach (var transfer in EnumerateTransfers(board, burst, releasedPressure))
                 {
                     ApplyDelta(pressureDeltas, transfer.target, transfer.pressure);
                 }
@@ -77,10 +92,9 @@ public sealed class ChainResolver
             TotalBurstCount: burstHistory.Count);
     }
 
-    private static IEnumerable<(HexCoord target, int pressure)> EnumerateTransfers(PressureChain.Core.Board.Board board, BurstEvent burst)
+    private static IEnumerable<(HexCoord target, int pressure)> EnumerateTransfers(PressureChain.Core.Board.Board board, BurstEvent burst, int release)
     {
         var node = board.NodeAt(burst.Origin);
-        var release = GetReleasePressure(node, burst.WasChained);
         if (release <= 0)
         {
             yield break;
@@ -145,9 +159,24 @@ public sealed class ChainResolver
         }
     }
 
-    private static int GetReleasePressure(Node node, bool wasChained)
+    private static int GetReleasePressure(Node node, bool wasChained, int? releasePressureOverride)
     {
+        if (releasePressureOverride.HasValue)
+        {
+            return releasePressureOverride.Value;
+        }
+
         return node.Type == NodeType.Amplifier && wasChained ? 200 : 100;
+    }
+
+    private static int GetDrainedPressure(Node node, bool wasChained, int? releasePressureOverride)
+    {
+        if (releasePressureOverride.HasValue)
+        {
+            return Math.Min(node.Pressure, releasePressureOverride.Value);
+        }
+
+        return node.Pressure;
     }
 
     private static bool CanTransfer(PressureChain.Core.Board.Board board, HexCoord origin, HexDirection direction)
