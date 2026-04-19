@@ -16,6 +16,7 @@ public partial class BoardNode : Node2D
     private bool _inputEnabled = true;
 
     public event Action<PlayerAction>? ActionRequested;
+    public event Action<string>? DebugEventRaised;
 
     public void DisplayBoard(GameBoard board)
     {
@@ -130,18 +131,21 @@ public partial class BoardNode : Node2D
         if (shiftPressed && targetNode.Type != NodeType.Bulwark && targetNode.Pressure >= 50)
         {
             ClearSelection();
+            DebugEventRaised?.Invoke($"Queued {DebugEventFormatter.FormatAction(new TriggerEarlyAction(coord))} on {DebugEventFormatter.FormatNode(coord, targetNode)}");
             ActionRequested?.Invoke(new TriggerEarlyAction(coord));
             return;
         }
 
         if (_selectedCoord is null)
         {
+            DebugEventRaised?.Invoke($"Selected {DebugEventFormatter.FormatNode(coord, targetNode)}");
             SetSelection(coord);
             return;
         }
 
         if (_selectedCoord.Value == coord)
         {
+            DebugEventRaised?.Invoke($"Cleared selection at {DebugEventFormatter.FormatNode(coord, targetNode)}");
             ClearSelection();
             return;
         }
@@ -153,10 +157,13 @@ public partial class BoardNode : Node2D
             targetNode.Type != NodeType.Bulwark)
         {
             ClearSelection();
+            DebugEventRaised?.Invoke(
+                $"Queued {DebugEventFormatter.FormatAction(new MergeAction(selectedCoord, coord))} | A {DebugEventFormatter.FormatNode(selectedCoord, selectedNode)} | B {DebugEventFormatter.FormatNode(coord, targetNode)}");
             ActionRequested?.Invoke(new MergeAction(selectedCoord, coord));
             return;
         }
 
+        DebugEventRaised?.Invoke($"Changed selection to {DebugEventFormatter.FormatNode(coord, targetNode)}");
         SetSelection(coord);
     }
 
@@ -168,7 +175,9 @@ public partial class BoardNode : Node2D
         }
 
         ClearSelection();
-        ActionRequested?.Invoke(new VentRedirectAction(coord, targetNode.Facing.Value.RotateClockwise()));
+        var action = new VentRedirectAction(coord, targetNode.Facing.Value.RotateClockwise());
+        DebugEventRaised?.Invoke($"Queued {DebugEventFormatter.FormatAction(action)} on {DebugEventFormatter.FormatNode(coord, targetNode)}");
+        ActionRequested?.Invoke(action);
     }
 
     private HexCoord? FindCoordAtPoint(Vector2 localPoint)
