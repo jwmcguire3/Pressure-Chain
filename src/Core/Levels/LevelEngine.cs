@@ -1,5 +1,6 @@
 using PressureChain.Core.Actions;
 using PressureChain.Core.Board;
+using PressureChain.Core.Telemetry;
 using GameBoard = PressureChain.Core.Board.Board;
 
 namespace PressureChain.Core.Levels;
@@ -7,10 +8,12 @@ namespace PressureChain.Core.Levels;
 public sealed class LevelEngine
 {
     private readonly ActionResolver _actionResolver;
+    private readonly IActionLogger _actionLogger;
 
-    public LevelEngine(ActionResolver actionResolver)
+    public LevelEngine(ActionResolver actionResolver, IActionLogger? actionLogger = null)
     {
         _actionResolver = actionResolver ?? throw new ArgumentNullException(nameof(actionResolver));
+        _actionLogger = actionLogger ?? new NullActionLogger();
     }
 
     public LevelState PlayAction(LevelState state, PlayerAction action)
@@ -46,10 +49,18 @@ public sealed class LevelEngine
             ScoreAccumulated = scoreAccumulated
         };
 
-        return nextState with
+        nextState = nextState with
         {
             Status = EvaluateStatus(nextState, objectiveMet)
         };
+
+        _actionLogger.LogAction(action, state, nextState);
+        if (nextState.Status is LevelStatus.Won or LevelStatus.Lost)
+        {
+            _actionLogger.LogLevelEnd(nextState.Status, nextState.ScoreAccumulated);
+        }
+
+        return nextState;
     }
 
     private static LevelStatus EvaluateStatus(LevelState state, bool objectiveMet)

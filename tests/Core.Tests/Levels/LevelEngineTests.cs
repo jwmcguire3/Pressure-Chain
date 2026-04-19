@@ -3,6 +3,7 @@ using PressureChain.Core.Board;
 using PressureChain.Core.Chains;
 using PressureChain.Core.Grid;
 using PressureChain.Core.Levels;
+using PressureChain.Core.Telemetry;
 
 namespace PressureChain.Core.Tests.Levels;
 
@@ -75,6 +76,54 @@ public sealed class LevelEngineTests
         Assert.Equal(51, result.ScoreAccumulated);
     }
 
+    [Fact]
+    public void PlayAction_LogsExactlyOneActionRecordPerAction()
+    {
+        var logger = new RecordingActionLogger();
+        var engine = new LevelEngine(new ActionResolver(new ChainResolver()), logger);
+        var state = new LevelState(
+            Board: CreateBoard(
+                (West, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.E))),
+                (Center, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
+                (East, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W)))),
+            MovesRemaining: 5,
+            Objective: new ClearAllOfTypeObjective(NodeType.Vent),
+            ScoreAccumulated: 0,
+            Status: LevelStatus.InProgress);
+
+        engine.PlayAction(state, new TriggerEarlyAction(West));
+
+        Assert.Single(logger.ActionRecords);
+    }
+
+    [Fact]
+    public void PlayAction_WithNullActionLogger_MatchesDefaultBehavior()
+    {
+        var actionResolver = new ActionResolver(new ChainResolver());
+        var state = new LevelState(
+            Board: CreateBoard(
+                (West, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.E))),
+                (Center, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
+                (East, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W)))),
+            MovesRemaining: 5,
+            Objective: new ClearAllOfTypeObjective(NodeType.Vent),
+            ScoreAccumulated: 0,
+            Status: LevelStatus.InProgress);
+        var action = new TriggerEarlyAction(West);
+
+        var defaultResult = new LevelEngine(actionResolver).PlayAction(state, action);
+        var nullLoggerResult = new LevelEngine(actionResolver, new NullActionLogger()).PlayAction(state, action);
+
+        Assert.Equal(defaultResult.MovesRemaining, nullLoggerResult.MovesRemaining);
+        Assert.Equal(defaultResult.ScoreAccumulated, nullLoggerResult.ScoreAccumulated);
+        Assert.Equal(defaultResult.Status, nullLoggerResult.Status);
+        Assert.Equal(defaultResult.Board.Coords, nullLoggerResult.Board.Coords);
+        foreach (var coord in defaultResult.Board.Coords)
+        {
+            Assert.Equal(defaultResult.Board.NodeAt(coord), nullLoggerResult.Board.NodeAt(coord));
+        }
+    }
+
     private static PressureChain.Core.Board.Board CreateBoard(params (HexCoord coord, Node node)[] entries)
     {
         var grid = new HexGrid<Node>(entries.Select(entry => entry.coord));
@@ -110,5 +159,23 @@ public sealed class LevelEngineTests
         }
 
         return mask;
+    }
+
+    private sealed class RecordingActionLogger : IActionLogger
+    {
+        public List<(PlayerAction action, LevelState before, LevelState after)> ActionRecords { get; } = [];
+
+        public void LogAction(PlayerAction action, LevelState before, LevelState after)
+        {
+            ActionRecords.Add((action, before, after));
+        }
+
+        public void LogLevelStart(LevelState initial)
+        {
+        }
+
+        public void LogLevelEnd(LevelStatus outcome, int finalScore)
+        {
+        }
     }
 }

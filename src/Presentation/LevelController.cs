@@ -2,6 +2,7 @@ using Godot;
 using PressureChain.Core.Actions;
 using PressureChain.Core.Chains;
 using PressureChain.Core.Levels;
+using PressureChain.Core.Telemetry;
 
 namespace PressureChain.Presentation;
 
@@ -11,6 +12,7 @@ public partial class LevelController : Node2D
 
     private readonly ActionResolver _actionResolver = new(new ChainResolver());
     private readonly Queue<string> _debugHistory = new();
+    private IActionLogger _actionLogger = null!;
     private LevelEngine _levelEngine = null!;
     private LevelState _levelState = null!;
     private BoardNode _boardNode = null!;
@@ -21,7 +23,10 @@ public partial class LevelController : Node2D
 
     public override void _Ready()
     {
-        _levelEngine = new LevelEngine(_actionResolver);
+        var sessionId = Guid.NewGuid().ToString("N");
+        var logPath = ProjectSettings.GlobalizePath($"user://playtest-{sessionId}.ndjson");
+        _actionLogger = new JsonFileActionLogger(logPath);
+        _levelEngine = new LevelEngine(_actionResolver, _actionLogger);
         _boardNode = GetNode<BoardNode>("BoardNode");
         _statusLabel = GetNode<Label>("CanvasLayer/StatusLabel");
         _debugLabel = GetNode<Label>("CanvasLayer/DebugLabel");
@@ -29,10 +34,12 @@ public partial class LevelController : Node2D
         _boardNode.DebugEventRaised += AddDebugEntry;
 
         _levelState = Phase1TestLevelFactory.Create();
+        _actionLogger.LogLevelStart(_levelState);
         _boardNode.DisplayBoard(_levelState.Board);
         AddDebugEntry("Debug overlay active. Press F3 to toggle.");
         AddDebugEntry("Validate inputs with left-click merge, right-click vent rotate, and Shift+click trigger early.");
         AddDebugEntry("Top-right amplifier lane is seeded so triggering near it should extend the chain by one extra cell.");
+        AddDebugEntry($"Playtest logging: {logPath}");
         UpdateStatus();
         UpdateDebugLabel();
     }
