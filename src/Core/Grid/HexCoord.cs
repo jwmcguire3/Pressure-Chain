@@ -28,4 +28,9 @@ public readonly record struct HexCoord(int Q, int R)
 
         return (Math.Abs(deltaQ) + Math.Abs(deltaR) + Math.Abs(deltaS)) / 2;
     }
+
+    public static HexCoord operator +(HexCoord left, HexCoord right)
+    {
+        return new HexCoord(left.Q + right.Q, left.R + right.R);
+    }
 }
