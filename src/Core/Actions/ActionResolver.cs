@@ -24,13 +24,18 @@ public sealed class ActionResolver
 
     public GameBoard Apply(GameBoard board, PlayerAction action)
     {
+        return ApplyDetailed(board, action).Board;
+    }
+
+    public ActionOutcome ApplyDetailed(GameBoard board, PlayerAction action)
+    {
         ArgumentNullException.ThrowIfNull(board);
         ArgumentNullException.ThrowIfNull(action);
 
         return action switch
         {
-            MergeAction mergeAction => ApplyMerge(board, mergeAction),
-            VentRedirectAction ventRedirectAction => ApplyVentRedirect(board, ventRedirectAction),
+            MergeAction mergeAction => new ActionOutcome(ApplyMerge(board, mergeAction), ChainResolution: null),
+            VentRedirectAction ventRedirectAction => new ActionOutcome(ApplyVentRedirect(board, ventRedirectAction), ChainResolution: null),
             TriggerEarlyAction triggerEarlyAction => ApplyTriggerEarly(board, triggerEarlyAction),
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, "Unsupported player action.")
         };
@@ -83,7 +88,7 @@ public sealed class ActionResolver
         return board.WithNode(action.Target, targetNode with { Facing = action.NewFacing });
     }
 
-    private GameBoard ApplyTriggerEarly(GameBoard board, TriggerEarlyAction action)
+    private ActionOutcome ApplyTriggerEarly(GameBoard board, TriggerEarlyAction action)
     {
         var targetNode = RequireNode(board, action.Target);
         if (targetNode.Type == NodeType.Bulwark)
@@ -97,8 +102,9 @@ public sealed class ActionResolver
         }
 
         var releasePressure = targetNode.Pressure * 75 / 100;
+        var resolution = _chainResolver.Resolve(board, action.Target, initialReleasePressureOverride: releasePressure);
 
-        return _chainResolver.Resolve(board, action.Target, initialReleasePressureOverride: releasePressure).FinalBoard;
+        return new ActionOutcome(resolution.FinalBoard, resolution);
     }
 
     private static Node RequireNode(GameBoard board, HexCoord coord)
