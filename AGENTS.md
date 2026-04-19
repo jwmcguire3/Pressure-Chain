@@ -1,7 +1,7 @@
-# Pressure Chain — Agent Instructions
+﻿# Pressure Chain — Agent Instructions
 
 ## Project
-2D hex-grid puzzle game. Godot 4.3, C#. Target: iOS + Android.
+2D hex-grid puzzle game. Godot 4.6.2, C#. Target: iOS + Android.
 Design source of truth: `docs/DESIGN.md`. Do not contradict it without explicit instruction.
 
 ## Architecture rules
@@ -9,8 +9,7 @@ Design source of truth: `docs/DESIGN.md`. Do not contradict it without explicit 
   Godot-specific code lives in `src/Presentation/`.
 - Core logic must be unit-testable without running the Godot editor.
 - Use `dotnet test` as the test runner against `tests/Core.Tests/`.
-- Use records and immutable value types for board state. Mutation happens in
-  one place: the `IBoardMutator` implementation.
+- Use records and immutable value types for board state. Mutation should stay localized and explicit.
 - No singletons. Dependency injection via constructor.
 
 ## Code style
@@ -37,3 +36,4 @@ Before declaring a task done, you must:
 - Don't write "TODO" comments — either do it or explicitly note the deferred work
   in a `docs/DEFERRED.md` entry.
 - Don't modify `docs/DESIGN.md` unless the prompt explicitly asks you to.
+

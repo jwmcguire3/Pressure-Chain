@@ -1,6 +1,6 @@
 # Pressure Chain
 
-Pressure Chain is a 2D hex-grid puzzle game built with Godot 4.3 and C#, targeting iOS and Android with engine-agnostic core simulation logic separated from presentation.
+Pressure Chain is a 2D hex-grid puzzle game built with Godot 4.6.2 and C#, targeting iOS and Android with engine-agnostic core simulation logic separated from presentation.
 
 ## Development
 

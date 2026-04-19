@@ -7,4 +7,5 @@ public sealed record LevelState(
     int MovesRemaining,
     LevelObjective Objective,
     int ScoreAccumulated,
+    IReadOnlyList<PressureChain.Core.Grid.HexCoord> PoppedTargetCoords,
     LevelStatus Status);

@@ -16,6 +16,8 @@ public partial class HexCellNode : Node2D
     private static readonly Color SelectionOutlineColor = new("#6AD7E8");
     private static readonly Color DefaultOutlineColor = new("#16313A");
     private static readonly Color SymbolColor = new("#13252B");
+    private static readonly Color TargetOutlineColor = new("#F4D35E");
+    private static readonly Color PoppedTargetOutlineColor = new("#66C18C");
 
     private readonly Vector2[] _hexPoints = HexLayout.CreatePointyTopPolygon(48f);
 
@@ -23,6 +25,8 @@ public partial class HexCellNode : Node2D
     private BoardCell _displayModel;
     private float _pulseTime;
     private bool _isSelected;
+    private bool _isTagged;
+    private bool _isPoppedTarget;
     private bool _isBurstAnimating;
     private double _burstAnimationToken;
 
@@ -71,6 +75,18 @@ public partial class HexCellNode : Node2D
         QueueRedraw();
     }
 
+    public void SetTagged(bool tagged, bool popped)
+    {
+        if (_isTagged == tagged && _isPoppedTarget == popped)
+        {
+            return;
+        }
+
+        _isTagged = tagged;
+        _isPoppedTarget = popped;
+        QueueRedraw();
+    }
+
     public bool ContainsLocalPoint(Vector2 localPoint)
     {
         return Geometry2D.IsPointInPolygon(localPoint, _hexPoints);
@@ -108,6 +124,7 @@ public partial class HexCellNode : Node2D
     {
         DrawColoredPolygon(_hexPoints, GetFillColor());
         DrawPolyline(_hexPoints.Append(_hexPoints[0]).ToArray(), GetOutlineColor(), 3f, antialiased: true);
+        DrawObjectiveRing();
         DrawTypeSymbol();
         DrawPressureLabel();
     }
@@ -135,6 +152,17 @@ public partial class HexCellNode : Node2D
         return NodeStateRules.FromPressure(_displayModel.Pressure) == NodeState.Volatile
             ? VolatileOutlineColor
             : DefaultOutlineColor;
+    }
+
+    private void DrawObjectiveRing()
+    {
+        if (!_isTagged)
+        {
+            return;
+        }
+
+        var color = _isPoppedTarget ? PoppedTargetOutlineColor : TargetOutlineColor;
+        DrawArc(Vector2.Zero, 27f, 0f, Mathf.Tau, 32, color, 4f, antialiased: true);
     }
 
     private void DrawTypeSymbol()

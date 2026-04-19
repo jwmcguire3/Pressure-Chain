@@ -58,8 +58,9 @@ public sealed class JsonFileActionLoggerTests : IDisposable
         return new LevelState(
             Board: CreateBoard((Center, CreateNode(NodeType.Cell, centerPressure))),
             MovesRemaining: movesRemaining,
-            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            Objective: new TaggedClusterObjective("Telemetry cluster", [Center]),
             ScoreAccumulated: scoreAccumulated,
+            PoppedTargetCoords: Array.Empty<HexCoord>(),
             Status: status);
     }
 

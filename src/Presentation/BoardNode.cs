@@ -12,21 +12,24 @@ public partial class BoardNode : Node2D
 {
     private readonly Dictionary<HexCoord, HexCellNode> _cells = [];
     private GameBoard? _board;
+    private IReadOnlyList<HexCoord> _taggedCoords = Array.Empty<HexCoord>();
+    private IReadOnlyList<HexCoord> _poppedCoords = Array.Empty<HexCoord>();
     private HexCoord? _selectedCoord;
     private bool _inputEnabled = true;
 
     public event Action<PlayerAction>? ActionRequested;
-    public event Action<string>? DebugEventRaised;
-
-    public void DisplayBoard(GameBoard board)
+    public void DisplayBoard(GameBoard board, IReadOnlyList<HexCoord> taggedCoords, IReadOnlyList<HexCoord> poppedCoords)
     {
         _board = board ?? throw new ArgumentNullException(nameof(board));
+        _taggedCoords = taggedCoords ?? Array.Empty<HexCoord>();
+        _poppedCoords = poppedCoords ?? Array.Empty<HexCoord>();
         EnsureCells(board);
 
         foreach (var coord in board.Coords)
         {
             var cell = _cells[coord];
             cell.Bind(coord, board.NodeAt(coord));
+            cell.SetTagged(_taggedCoords.Contains(coord), _poppedCoords.Contains(coord));
             cell.SetSelected(_selectedCoord == coord);
         }
     }
@@ -128,24 +131,21 @@ public partial class BoardNode : Node2D
 
     private void HandleLeftClick(HexCoord coord, BoardCell targetNode, bool shiftPressed)
     {
-        if (shiftPressed && targetNode.Type != NodeType.Bulwark && targetNode.Pressure >= 50)
+        if (shiftPressed && targetNode.Type != NodeType.Bulwark && targetNode.Pressure >= 75)
         {
             ClearSelection();
-            DebugEventRaised?.Invoke($"Queued {DebugEventFormatter.FormatAction(new TriggerEarlyAction(coord))} on {DebugEventFormatter.FormatNode(coord, targetNode)}");
             ActionRequested?.Invoke(new TriggerEarlyAction(coord));
             return;
         }
 
         if (_selectedCoord is null)
         {
-            DebugEventRaised?.Invoke($"Selected {DebugEventFormatter.FormatNode(coord, targetNode)}");
             SetSelection(coord);
             return;
         }
 
         if (_selectedCoord.Value == coord)
         {
-            DebugEventRaised?.Invoke($"Cleared selection at {DebugEventFormatter.FormatNode(coord, targetNode)}");
             ClearSelection();
             return;
         }
@@ -157,13 +157,10 @@ public partial class BoardNode : Node2D
             targetNode.Type != NodeType.Bulwark)
         {
             ClearSelection();
-            DebugEventRaised?.Invoke(
-                $"Queued {DebugEventFormatter.FormatAction(new MergeAction(selectedCoord, coord))} | A {DebugEventFormatter.FormatNode(selectedCoord, selectedNode)} | B {DebugEventFormatter.FormatNode(coord, targetNode)}");
             ActionRequested?.Invoke(new MergeAction(selectedCoord, coord));
             return;
         }
 
-        DebugEventRaised?.Invoke($"Changed selection to {DebugEventFormatter.FormatNode(coord, targetNode)}");
         SetSelection(coord);
     }
 
@@ -176,7 +173,6 @@ public partial class BoardNode : Node2D
 
         ClearSelection();
         var action = new VentRedirectAction(coord, targetNode.Facing.Value.RotateClockwise());
-        DebugEventRaised?.Invoke($"Queued {DebugEventFormatter.FormatAction(action)} on {DebugEventFormatter.FormatNode(coord, targetNode)}");
         ActionRequested?.Invoke(action);
     }
 
@@ -210,6 +206,7 @@ public partial class BoardNode : Node2D
     {
         foreach (var (coord, cell) in _cells)
         {
+            cell.SetTagged(_taggedCoords.Contains(coord), _poppedCoords.Contains(coord));
             cell.SetSelected(_selectedCoord == coord);
         }
     }

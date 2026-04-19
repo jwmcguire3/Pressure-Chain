@@ -28,13 +28,19 @@ public sealed class LevelEngine
 
         if (state.MovesRemaining <= 0)
         {
-            return state with { Status = EvaluateObjective(state.Board, state.Objective, chainResolution: null) ? LevelStatus.Won : LevelStatus.Lost };
+            return state with
+            {
+                Status = EvaluateObjective(
+                    state.Objective,
+                    state.PoppedTargetCoords,
+                    chainResolution: null) ? LevelStatus.Won : LevelStatus.Lost
+            };
         }
 
         var movesRemaining = state.MovesRemaining - 1;
         var actionOutcome = _actionResolver.ApplyDetailed(state.Board, action);
-        var objectiveBoard = actionOutcome.ChainResolution?.FinalBoard ?? actionOutcome.Board;
-        var objectiveMet = EvaluateObjective(objectiveBoard, state.Objective, actionOutcome.ChainResolution);
+        var poppedTargetCoords = UpdatePoppedTargets(state.PoppedTargetCoords, state.Objective, actionOutcome.ChainResolution);
+        var objectiveMet = EvaluateObjective(state.Objective, poppedTargetCoords, actionOutcome.ChainResolution);
         var boardAfterTick = PressureTick.Apply(actionOutcome.Board);
         var scoreAccumulated = state.ScoreAccumulated;
         if (actionOutcome.ChainResolution is not null)
@@ -46,7 +52,8 @@ public sealed class LevelEngine
         {
             Board = boardAfterTick,
             MovesRemaining = movesRemaining,
-            ScoreAccumulated = scoreAccumulated
+            ScoreAccumulated = scoreAccumulated,
+            PoppedTargetCoords = poppedTargetCoords
         };
 
         nextState = nextState with
@@ -75,33 +82,48 @@ public sealed class LevelEngine
             : LevelStatus.InProgress;
     }
 
-    private static bool EvaluateObjective(GameBoard board, LevelObjective objective, PressureChain.Core.Chains.ChainResolution? chainResolution)
+    private static bool EvaluateObjective(
+        LevelObjective objective,
+        IReadOnlyList<PressureChain.Core.Grid.HexCoord> poppedTargetCoords,
+        PressureChain.Core.Chains.ChainResolution? chainResolution)
     {
         return objective switch
         {
-            ClearAllOfTypeObjective clearAllOfTypeObjective => AreAllNodesOfTypeCleared(board, clearAllOfTypeObjective.TargetType, chainResolution),
+            TaggedClusterObjective taggedClusterObjective => AreTaggedClustersPopped(taggedClusterObjective, poppedTargetCoords, chainResolution),
             _ => throw new ArgumentOutOfRangeException(nameof(objective), objective, "Unsupported level objective.")
         };
     }
 
-    private static bool AreAllNodesOfTypeCleared(GameBoard board, NodeType targetType, PressureChain.Core.Chains.ChainResolution? chainResolution)
+    private static IReadOnlyList<PressureChain.Core.Grid.HexCoord> UpdatePoppedTargets(
+        IReadOnlyList<PressureChain.Core.Grid.HexCoord> existingPoppedTargetCoords,
+        LevelObjective objective,
+        PressureChain.Core.Chains.ChainResolution? chainResolution)
     {
-        var targetCoords = board.Coords
-            .Where(coord => board.NodeAt(coord).Type == targetType)
-            .ToArray();
-
-        if (chainResolution is not null)
+        if (chainResolution is null)
         {
-            var burstCoords = chainResolution.Value.Waves
-                .SelectMany(wave => wave)
-                .Select(burst => burst.Origin)
-                .ToHashSet();
-
-            return targetCoords.All(burstCoords.Contains);
+            return existingPoppedTargetCoords;
         }
 
-        return targetCoords
-            .Select(board.NodeAt)
-            .All(node => node.Pressure == 0);
+        return objective switch
+        {
+            TaggedClusterObjective taggedClusterObjective => existingPoppedTargetCoords
+                .Concat(chainResolution.Value.Waves
+                    .SelectMany(wave => wave)
+                    .Select(burst => burst.Origin)
+                    .Where(taggedClusterObjective.TargetCoords.Contains))
+                .Distinct()
+                .ToArray(),
+            _ => throw new ArgumentOutOfRangeException(nameof(objective), objective, "Unsupported level objective.")
+        };
+    }
+
+    private static bool AreTaggedClustersPopped(
+        TaggedClusterObjective objective,
+        IReadOnlyList<PressureChain.Core.Grid.HexCoord> poppedTargetCoords,
+        PressureChain.Core.Chains.ChainResolution? chainResolution)
+    {
+        _ = chainResolution;
+        var poppedTargetSet = poppedTargetCoords.ToHashSet();
+        return objective.TargetCoords.All(poppedTargetSet.Contains);
     }
 }

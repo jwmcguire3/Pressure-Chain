@@ -16,13 +16,21 @@
 *.nupkg
 *.snupkg
 TestResults/
+.dotnet/
+.nuget/
+.localappdata/
 
 # Godot 4
 .godot/
 .import/
 *.import
-export_presets.cfg
+*.uid
+.appdata/
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local build outputs and logs
+builds/
+*.log

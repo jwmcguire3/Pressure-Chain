@@ -22,8 +22,9 @@ public sealed class BruteForceSolverTests
         var initial = new LevelState(
             Board: CreateBoard((Center, CreateNode(NodeType.Cell, 95))),
             MovesRemaining: 1,
-            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            Objective: CreateObjective(Center),
             ScoreAccumulated: 0,
+            PoppedTargetCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var result = _solver.Solve(initial, maxDepth: 1);
@@ -40,8 +41,9 @@ public sealed class BruteForceSolverTests
         var initial = new LevelState(
             Board: CreateBoard((Center, CreateNode(NodeType.Cell, 95))),
             MovesRemaining: 0,
-            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            Objective: CreateObjective(Center),
             ScoreAccumulated: 0,
+            PoppedTargetCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var result = _solver.Solve(initial, maxDepth: 1);
@@ -58,11 +60,12 @@ public sealed class BruteForceSolverTests
         var initial = new LevelState(
             Board: CreateBoard(
                 (West, CreateNode(NodeType.Vent, 95, facing: HexDirection.E, connections: OpenOnly(HexDirection.E))),
-                (Center, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
+                (Center, CreateNode(NodeType.Amplifier, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
                 (East, CreateNode(NodeType.Vent, 95, facing: HexDirection.W, connections: OpenOnly(HexDirection.W)))),
             MovesRemaining: 1,
-            Objective: new ClearAllOfTypeObjective(NodeType.Vent),
+            Objective: CreateObjective(West, Center, East),
             ScoreAccumulated: 0,
+            PoppedTargetCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var result = _solver.Solve(initial, maxDepth: 1);
@@ -101,8 +104,9 @@ public sealed class BruteForceSolverTests
         var initial = new LevelState(
             Board: CreateBoard(entries.ToArray()),
             MovesRemaining: 12,
-            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            Objective: CreateObjective(new HexCoord(1, 1)),
             ScoreAccumulated: 0,
+            PoppedTargetCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var stopwatch = Stopwatch.StartNew();
@@ -149,5 +153,10 @@ public sealed class BruteForceSolverTests
         }
 
         return mask;
+    }
+
+    private static TaggedClusterObjective CreateObjective(params HexCoord[] coords)
+    {
+        return new TaggedClusterObjective("Test cluster", coords);
     }
 }
