@@ -1,0 +1,28 @@
+# Build artifacts
+[Bb]in/
+[Oo]bj/
+
+# Rider / VS / VS Code
+.vs/
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET
+*.rsuser
+*.nupkg
+*.snupkg
+TestResults/
+
+# Godot 4
+.godot/
+.import/
+*.import
+export_presets.cfg
+
+# OS files
+.DS_Store
+Thumbs.db
