@@ -1,6 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace PressureChain.Core.Grid;
 
-public sealed class HexGrid<T> where T : class
+public sealed class HexGrid<T>
 {
     private readonly HashSet<HexCoord> _validCoords;
     private readonly Dictionary<HexCoord, T> _values;
@@ -13,19 +15,34 @@ public sealed class HexGrid<T> where T : class
         _values = new Dictionary<HexCoord, T>();
     }
 
-    public T? Get(HexCoord coord)
+    [return: MaybeNull]
+    public T Get(HexCoord coord)
     {
         if (!_validCoords.Contains(coord))
         {
-            return null;
+            return default;
         }
 
         return _values.GetValueOrDefault(coord);
     }
 
+    public bool TryGet(HexCoord coord, [MaybeNullWhen(false)] out T value)
+    {
+        if (!_validCoords.Contains(coord))
+        {
+            value = default;
+            return false;
+        }
+
+        return _values.TryGetValue(coord, out value);
+    }
+
     public void Set(HexCoord coord, T value)
     {
-        ArgumentNullException.ThrowIfNull(value);
+        if (value is null)
+        {
+            throw new ArgumentNullException(nameof(value));
+        }
 
         if (!_validCoords.Contains(coord))
         {
