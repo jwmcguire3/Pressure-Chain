@@ -22,9 +22,9 @@ public sealed class BruteForceSolverTests
         var initial = new LevelState(
             Board: CreateBoard((Center, CreateNode(NodeType.Cell, 95))),
             MovesRemaining: 1,
-            Objective: CreateObjective(Center),
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var result = _solver.Solve(initial, maxDepth: 1);
@@ -41,9 +41,9 @@ public sealed class BruteForceSolverTests
         var initial = new LevelState(
             Board: CreateBoard((Center, CreateNode(NodeType.Cell, 95))),
             MovesRemaining: 0,
-            Objective: CreateObjective(Center),
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var result = _solver.Solve(initial, maxDepth: 1);
@@ -63,9 +63,9 @@ public sealed class BruteForceSolverTests
                 (Center, CreateNode(NodeType.Amplifier, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
                 (East, CreateNode(NodeType.Vent, 95, facing: HexDirection.W, connections: OpenOnly(HexDirection.W)))),
             MovesRemaining: 1,
-            Objective: CreateObjective(West, Center, East),
+            Objective: CreateObjective(NodeType.Vent),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var result = _solver.Solve(initial, maxDepth: 1);
@@ -104,9 +104,9 @@ public sealed class BruteForceSolverTests
         var initial = new LevelState(
             Board: CreateBoard(entries.ToArray()),
             MovesRemaining: 12,
-            Objective: CreateObjective(new HexCoord(1, 1)),
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var stopwatch = Stopwatch.StartNew();
@@ -155,8 +155,8 @@ public sealed class BruteForceSolverTests
         return mask;
     }
 
-    private static TaggedClusterObjective CreateObjective(params HexCoord[] coords)
+    private static ClearAllOfTypeObjective CreateObjective(NodeType targetType)
     {
-        return new TaggedClusterObjective("Test cluster", coords);
+        return new ClearAllOfTypeObjective(targetType);
     }
 }

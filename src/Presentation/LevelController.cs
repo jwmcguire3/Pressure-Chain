@@ -9,12 +9,14 @@ namespace PressureChain.Presentation;
 
 public partial class LevelController : Node2D
 {
+    private readonly IReadOnlyList<Phase1LevelDefinition> _levels = Phase1LevelCatalog.All;
     private readonly ActionResolver _actionResolver = new(new ChainResolver());
     private IActionLogger _actionLogger = null!;
     private LevelEngine _levelEngine = null!;
     private LevelState _levelState = null!;
     private BoardNode _boardNode = null!;
     private Label _statusLabel = null!;
+    private int _levelIndex;
     private bool _isAnimating;
 
     public override void _Ready()
@@ -27,10 +29,7 @@ public partial class LevelController : Node2D
         _statusLabel = GetNode<Label>("CanvasLayer/StatusLabel");
         _boardNode.ActionRequested += OnActionRequested;
 
-        _levelState = Phase1TestLevelFactory.Create();
-        _actionLogger.LogLevelStart(_levelState);
-        _boardNode.DisplayBoard(_levelState.Board, GetTaggedCoords(_levelState.Objective), _levelState.PoppedTargetCoords);
-        UpdateStatus();
+        LoadLevel(_levelIndex);
     }
 
     private async void OnActionRequested(PlayerAction action)
@@ -51,8 +50,17 @@ public partial class LevelController : Node2D
             }
 
             _levelState = _levelEngine.PlayAction(_levelState, action);
-            _boardNode.DisplayBoard(_levelState.Board, GetTaggedCoords(_levelState.Objective), _levelState.PoppedTargetCoords);
+            _boardNode.DisplayBoard(_levelState.Board, GetObjectiveCoords(_levelState), _levelState.ClearedCoords);
             UpdateStatus();
+
+            if (_levelState.Status == LevelStatus.Won)
+            {
+                await AdvanceAfterWinAsync();
+            }
+            else if (_levelState.Status == LevelStatus.Lost)
+            {
+                await RestartAfterLossAsync();
+            }
         }
         catch (InvalidActionException)
         {
@@ -66,15 +74,14 @@ public partial class LevelController : Node2D
 
     private void UpdateStatus(string? message = null)
     {
-        var objectiveProgress = _levelState.Objective is TaggedClusterObjective taggedClusterObjective
-            ? $"{_levelState.PoppedTargetCoords.Count(coord => taggedClusterObjective.TargetCoords.Contains(coord))}/{taggedClusterObjective.TargetCoords.Count}"
-            : "?";
+        var level = _levels[_levelIndex];
+        var objectiveSummary = GetObjectiveSummary(_levelState);
 
         var statusText = _levelState.Status switch
         {
-            LevelStatus.Won => $"Moves: {_levelState.MovesRemaining}   Score: {_levelState.ScoreAccumulated}   Cluster: {objectiveProgress}\nLevel complete",
-            LevelStatus.Lost => $"Moves: {_levelState.MovesRemaining}   Score: {_levelState.ScoreAccumulated}   Cluster: {objectiveProgress}\nNo moves left",
-            _ => $"Moves: {_levelState.MovesRemaining}   Score: {_levelState.ScoreAccumulated}   Cluster: {objectiveProgress}"
+            LevelStatus.Won => $"Level {_levelIndex + 1}/{_levels.Count}: {level.DisplayName}\nMoves: {_levelState.MovesRemaining}   Score: {_levelState.ScoreAccumulated}\n{objectiveSummary}\nBoard cleared. Loading next level...",
+            LevelStatus.Lost => $"Level {_levelIndex + 1}/{_levels.Count}: {level.DisplayName}\nMoves: {_levelState.MovesRemaining}   Score: {_levelState.ScoreAccumulated}\n{objectiveSummary}\nOut of moves. Resetting level...",
+            _ => $"Level {_levelIndex + 1}/{_levels.Count}: {level.DisplayName}\nMoves: {_levelState.MovesRemaining}   Score: {_levelState.ScoreAccumulated}\n{objectiveSummary}\nMerge adjacent matches. Right-click Vents. Shift+click 50+ pressure."
         };
 
         if (!string.IsNullOrWhiteSpace(message))
@@ -85,12 +92,70 @@ public partial class LevelController : Node2D
         _statusLabel.Text = statusText;
     }
 
-    private static IReadOnlyList<HexCoord> GetTaggedCoords(LevelObjective objective)
+    private void LoadLevel(int levelIndex)
     {
-        return objective switch
+        _levelIndex = levelIndex;
+        _levelState = _levels[levelIndex].CreateInitialState();
+        _actionLogger.LogLevelStart(_levelState);
+        _boardNode.SetInputEnabled(true);
+        _boardNode.DisplayBoard(_levelState.Board, GetObjectiveCoords(_levelState), _levelState.ClearedCoords);
+        UpdateStatus();
+    }
+
+    private async Task AdvanceAfterWinAsync()
+    {
+        _isAnimating = true;
+        _boardNode.SetInputEnabled(false);
+        await ToSignal(GetTree().CreateTimer(0.9d), SceneTreeTimer.SignalName.Timeout);
+
+        if (_levelIndex + 1 < _levels.Count)
         {
-            TaggedClusterObjective taggedClusterObjective => taggedClusterObjective.TargetCoords,
+            LoadLevel(_levelIndex + 1);
+        }
+        else
+        {
+            _boardNode.SetInputEnabled(false);
+            UpdateStatus("Phase 1 rescue slice complete.");
+        }
+
+        _isAnimating = false;
+    }
+
+    private async Task RestartAfterLossAsync()
+    {
+        _isAnimating = true;
+        _boardNode.SetInputEnabled(false);
+        await ToSignal(GetTree().CreateTimer(1.1d), SceneTreeTimer.SignalName.Timeout);
+        LoadLevel(_levelIndex);
+        _isAnimating = false;
+    }
+
+    private static IReadOnlyList<HexCoord> GetObjectiveCoords(LevelState state)
+    {
+        return state.Objective switch
+        {
+            ClearAllOfTypeObjective clearAllOfTypeObjective => state.Board.Coords
+                .Where(coord => state.Board.NodeAt(coord).Type == clearAllOfTypeObjective.TargetType)
+                .ToArray(),
             _ => Array.Empty<HexCoord>()
         };
+    }
+
+    private static string GetObjectiveSummary(LevelState state)
+    {
+        return state.Objective switch
+        {
+            ClearAllOfTypeObjective clearAllOfTypeObjective => BuildClearAllSummary(state, clearAllOfTypeObjective),
+            _ => "Objective unavailable"
+        };
+    }
+
+    private static string BuildClearAllSummary(LevelState state, ClearAllOfTypeObjective objective)
+    {
+        var objectiveCoords = state.Board.Coords
+            .Where(coord => state.Board.NodeAt(coord).Type == objective.TargetType)
+            .ToArray();
+        var cleared = objectiveCoords.Count(coord => state.ClearedCoords.Contains(coord));
+        return $"Objective: Clear all {objective.TargetType} nodes ({cleared}/{objectiveCoords.Length})";
     }
 }

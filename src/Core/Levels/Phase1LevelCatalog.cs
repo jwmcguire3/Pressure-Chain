@@ -1,3 +1,4 @@
+using PressureChain.Core.Actions;
 using PressureChain.Core.Board;
 using PressureChain.Core.Grid;
 using GameBoard = PressureChain.Core.Board.Board;
@@ -8,36 +9,131 @@ public static class Phase1LevelCatalog
 {
     public static IReadOnlyList<Phase1LevelDefinition> All { get; } =
     [
-        CreateAuthorshipPrototype()
+        CreateCellBasicsLevel(),
+        CreateVentLessonLevel(),
+        CreateBulwarkLessonLevel(),
+        CreateCombinedChainLevel()
     ];
 
-    private static Phase1LevelDefinition CreateAuthorshipPrototype()
+    private static Phase1LevelDefinition CreateCellBasicsLevel()
     {
-        var westVent = new HexCoord(-1, 0);
-        var amplifier = new HexCoord(0, 0);
-        var eastVent = new HexCoord(1, 0);
+        var first = new HexCoord(0, 0);
+        var second = new HexCoord(1, 0);
+        var third = new HexCoord(4, 0);
 
         var entries = new (HexCoord coord, Node node)[]
         {
-            (westVent, CreateNode(NodeType.Vent, 95, facing: HexDirection.E, connections: OpenOnly(HexDirection.E))),
-            (amplifier, CreateNode(NodeType.Amplifier, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
-            (eastVent, CreateNode(NodeType.Vent, 95, facing: HexDirection.W, connections: OpenOnly(HexDirection.W))),
-            (new HexCoord(0, 1), CreateNode(NodeType.Bulwark, 0)),
-            (new HexCoord(-2, 1), CreateNode(NodeType.Cell, 12)),
-            (new HexCoord(-1, 1), CreateNode(NodeType.Cell, 8)),
-            (new HexCoord(2, -1), CreateNode(NodeType.Cell, 74))
+            (first, CreateNode(NodeType.Cell, 20)),
+            (second, CreateNode(NodeType.Cell, 30)),
+            (third, CreateNode(NodeType.Cell, 50))
         };
 
         return new Phase1LevelDefinition(
-            Id: "phase1_authorship_prototype",
-            DisplayName: "Phase 1 Authorship Prototype",
+            Id: "phase1_cell_basics",
+            DisplayName: "Level 1: Cells",
             Board: CreateBoard(entries),
-            MoveCap: 6,
-            Objective: new TaggedClusterObjective(
-                Name: "Pop the tagged chain cluster",
-                TargetCoords: [westVent, amplifier, eastVent]),
-            SolverMaxDepth: 6,
-            MinimumDistinctSolutions: 2);
+            MoveCap: 3,
+            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            SolverMaxDepth: 3,
+            MinimumDistinctSolutions: 2,
+            DemonstrationActions:
+            [
+                new MergeAction(first, second),
+                new TriggerEarlyAction(second),
+                new TriggerEarlyAction(third)
+            ],
+            MinimumDemonstratedWaveCount: 1);
+    }
+
+    private static Phase1LevelDefinition CreateVentLessonLevel()
+    {
+        var source = new HexCoord(-1, 0);
+        var vent = new HexCoord(0, 0);
+        var target = new HexCoord(1, 0);
+
+        var entries = new (HexCoord coord, Node node)[]
+        {
+            (source, CreateNode(NodeType.Cell, 95)),
+            (vent, CreateNode(NodeType.Vent, 89, facing: HexDirection.NE)),
+            (target, CreateNode(NodeType.Cell, 89))
+        };
+
+        return new Phase1LevelDefinition(
+            Id: "phase1_vent_redirect",
+            DisplayName: "Level 2: Redirect",
+            Board: CreateBoard(entries),
+            MoveCap: 2,
+            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            SolverMaxDepth: 2,
+            MinimumDistinctSolutions: 1,
+            DemonstrationActions:
+            [
+                new VentRedirectAction(vent, HexDirection.E),
+                new TriggerEarlyAction(source)
+            ],
+            MinimumDemonstratedWaveCount: 3);
+    }
+
+    private static Phase1LevelDefinition CreateBulwarkLessonLevel()
+    {
+        var source = new HexCoord(0, 0);
+        var vent = new HexCoord(1, -1);
+        var wall = new HexCoord(1, 0);
+        var target = new HexCoord(2, -1);
+
+        var entries = new (HexCoord coord, Node node)[]
+        {
+            (source, CreateNode(NodeType.Cell, 95)),
+            (vent, CreateNode(NodeType.Vent, 89, facing: HexDirection.E)),
+            (wall, CreateNode(NodeType.Bulwark, 0)),
+            (target, CreateNode(NodeType.Cell, 89))
+        };
+
+        return new Phase1LevelDefinition(
+            Id: "phase1_bulwark_route",
+            DisplayName: "Level 3: Wall",
+            Board: CreateBoard(entries),
+            MoveCap: 1,
+            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            SolverMaxDepth: 1,
+            MinimumDistinctSolutions: 1,
+            DemonstrationActions:
+            [
+                new TriggerEarlyAction(source)
+            ],
+            MinimumDemonstratedWaveCount: 3);
+    }
+
+    private static Phase1LevelDefinition CreateCombinedChainLevel()
+    {
+        var source = new HexCoord(-1, 0);
+        var vent = new HexCoord(0, 0);
+        var amplifier = new HexCoord(1, 0);
+        var wall = new HexCoord(0, 1);
+        var target = new HexCoord(2, 0);
+
+        var entries = new (HexCoord coord, Node node)[]
+        {
+            (source, CreateNode(NodeType.Cell, 95)),
+            (vent, CreateNode(NodeType.Vent, 89, facing: HexDirection.E)),
+            (amplifier, CreateNode(NodeType.Amplifier, 89)),
+            (wall, CreateNode(NodeType.Bulwark, 0)),
+            (target, CreateNode(NodeType.Cell, 89))
+        };
+
+        return new Phase1LevelDefinition(
+            Id: "phase1_combined_chain",
+            DisplayName: "Level 4: Amplify",
+            Board: CreateBoard(entries),
+            MoveCap: 1,
+            Objective: new ClearAllOfTypeObjective(NodeType.Cell),
+            SolverMaxDepth: 1,
+            MinimumDistinctSolutions: 1,
+            DemonstrationActions:
+            [
+                new TriggerEarlyAction(source)
+            ],
+            MinimumDemonstratedWaveCount: 4);
     }
 
     private static GameBoard CreateBoard(IEnumerable<(HexCoord coord, Node node)> entries)

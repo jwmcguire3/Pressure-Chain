@@ -14,10 +14,12 @@ public partial class HexCellNode : Node2D
     private static readonly Color BurstColor = Colors.White;
     private static readonly Color VolatileOutlineColor = new("#C63B3B");
     private static readonly Color SelectionOutlineColor = new("#6AD7E8");
+    private static readonly Color MergeCandidateOutlineColor = new("#7EE081");
     private static readonly Color DefaultOutlineColor = new("#16313A");
     private static readonly Color SymbolColor = new("#13252B");
     private static readonly Color TargetOutlineColor = new("#F4D35E");
     private static readonly Color PoppedTargetOutlineColor = new("#66C18C");
+    private static readonly Color TriggerEligibleColor = new("#FF7A59");
 
     private readonly Vector2[] _hexPoints = HexLayout.CreatePointyTopPolygon(48f);
 
@@ -25,8 +27,10 @@ public partial class HexCellNode : Node2D
     private BoardCell _displayModel;
     private float _pulseTime;
     private bool _isSelected;
-    private bool _isTagged;
-    private bool _isPoppedTarget;
+    private bool _isObjectiveTarget;
+    private bool _isCleared;
+    private bool _isMergeCandidate;
+    private bool _isTriggerEligible;
     private bool _isBurstAnimating;
     private double _burstAnimationToken;
 
@@ -75,15 +79,27 @@ public partial class HexCellNode : Node2D
         QueueRedraw();
     }
 
-    public void SetTagged(bool tagged, bool popped)
+    public void SetObjectiveProgress(bool objectiveTarget, bool cleared)
     {
-        if (_isTagged == tagged && _isPoppedTarget == popped)
+        if (_isObjectiveTarget == objectiveTarget && _isCleared == cleared)
         {
             return;
         }
 
-        _isTagged = tagged;
-        _isPoppedTarget = popped;
+        _isObjectiveTarget = objectiveTarget;
+        _isCleared = cleared;
+        QueueRedraw();
+    }
+
+    public void SetInteractionHints(bool mergeCandidate, bool triggerEligible)
+    {
+        if (_isMergeCandidate == mergeCandidate && _isTriggerEligible == triggerEligible)
+        {
+            return;
+        }
+
+        _isMergeCandidate = mergeCandidate;
+        _isTriggerEligible = triggerEligible;
         QueueRedraw();
     }
 
@@ -125,6 +141,7 @@ public partial class HexCellNode : Node2D
         DrawColoredPolygon(_hexPoints, GetFillColor());
         DrawPolyline(_hexPoints.Append(_hexPoints[0]).ToArray(), GetOutlineColor(), 3f, antialiased: true);
         DrawObjectiveRing();
+        DrawTriggerRing();
         DrawTypeSymbol();
         DrawPressureLabel();
     }
@@ -149,6 +166,11 @@ public partial class HexCellNode : Node2D
             return SelectionOutlineColor;
         }
 
+        if (_isMergeCandidate)
+        {
+            return MergeCandidateOutlineColor;
+        }
+
         return NodeStateRules.FromPressure(_displayModel.Pressure) == NodeState.Volatile
             ? VolatileOutlineColor
             : DefaultOutlineColor;
@@ -156,13 +178,23 @@ public partial class HexCellNode : Node2D
 
     private void DrawObjectiveRing()
     {
-        if (!_isTagged)
+        if (!_isObjectiveTarget)
         {
             return;
         }
 
-        var color = _isPoppedTarget ? PoppedTargetOutlineColor : TargetOutlineColor;
+        var color = _isCleared ? PoppedTargetOutlineColor : TargetOutlineColor;
         DrawArc(Vector2.Zero, 27f, 0f, Mathf.Tau, 32, color, 4f, antialiased: true);
+    }
+
+    private void DrawTriggerRing()
+    {
+        if (!_isTriggerEligible)
+        {
+            return;
+        }
+
+        DrawArc(Vector2.Zero, 34f, 0f, Mathf.Tau, 32, TriggerEligibleColor, 2f, antialiased: true);
     }
 
     private void DrawTypeSymbol()
@@ -194,9 +226,10 @@ public partial class HexCellNode : Node2D
         var left = end + direction.Rotated(Mathf.DegToRad(150f)) * 10f;
         var right = end + direction.Rotated(Mathf.DegToRad(-150f)) * 10f;
 
-        DrawLine(start, end, SymbolColor, 4f, antialiased: true);
-        DrawLine(end, left, SymbolColor, 4f, antialiased: true);
-        DrawLine(end, right, SymbolColor, 4f, antialiased: true);
+        DrawArc(Vector2.Zero, 20f, Mathf.DegToRad(-110f), Mathf.DegToRad(110f), 18, SymbolColor, 2f, antialiased: true);
+        DrawLine(start, end, SymbolColor, 5f, antialiased: true);
+        DrawLine(end, left, SymbolColor, 5f, antialiased: true);
+        DrawLine(end, right, SymbolColor, 5f, antialiased: true);
     }
 
     private void DrawBulwarkMark()

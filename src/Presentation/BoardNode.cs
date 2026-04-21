@@ -12,26 +12,28 @@ public partial class BoardNode : Node2D
 {
     private readonly Dictionary<HexCoord, HexCellNode> _cells = [];
     private GameBoard? _board;
-    private IReadOnlyList<HexCoord> _taggedCoords = Array.Empty<HexCoord>();
-    private IReadOnlyList<HexCoord> _poppedCoords = Array.Empty<HexCoord>();
+    private IReadOnlyList<HexCoord> _objectiveCoords = Array.Empty<HexCoord>();
+    private IReadOnlyList<HexCoord> _clearedCoords = Array.Empty<HexCoord>();
     private HexCoord? _selectedCoord;
     private bool _inputEnabled = true;
 
     public event Action<PlayerAction>? ActionRequested;
-    public void DisplayBoard(GameBoard board, IReadOnlyList<HexCoord> taggedCoords, IReadOnlyList<HexCoord> poppedCoords)
+
+    public void DisplayBoard(GameBoard board, IReadOnlyList<HexCoord> objectiveCoords, IReadOnlyList<HexCoord> clearedCoords)
     {
         _board = board ?? throw new ArgumentNullException(nameof(board));
-        _taggedCoords = taggedCoords ?? Array.Empty<HexCoord>();
-        _poppedCoords = poppedCoords ?? Array.Empty<HexCoord>();
+        _objectiveCoords = objectiveCoords ?? Array.Empty<HexCoord>();
+        _clearedCoords = clearedCoords ?? Array.Empty<HexCoord>();
         EnsureCells(board);
 
         foreach (var coord in board.Coords)
         {
             var cell = _cells[coord];
             cell.Bind(coord, board.NodeAt(coord));
-            cell.SetTagged(_taggedCoords.Contains(coord), _poppedCoords.Contains(coord));
-            cell.SetSelected(_selectedCoord == coord);
+            cell.SetObjectiveProgress(_objectiveCoords.Contains(coord), _clearedCoords.Contains(coord));
         }
+
+        RefreshVisualHints();
     }
 
     public void SetInputEnabled(bool inputEnabled)
@@ -131,7 +133,7 @@ public partial class BoardNode : Node2D
 
     private void HandleLeftClick(HexCoord coord, BoardCell targetNode, bool shiftPressed)
     {
-        if (shiftPressed && targetNode.Type != NodeType.Bulwark && targetNode.Pressure >= 75)
+        if (shiftPressed && targetNode.Type != NodeType.Bulwark && targetNode.Pressure >= 50)
         {
             ClearSelection();
             ActionRequested?.Invoke(new TriggerEarlyAction(coord));
@@ -193,21 +195,39 @@ public partial class BoardNode : Node2D
     private void SetSelection(HexCoord coord)
     {
         _selectedCoord = coord;
-        RefreshSelection();
+        RefreshVisualHints();
     }
 
     private void ClearSelection()
     {
         _selectedCoord = null;
-        RefreshSelection();
+        RefreshVisualHints();
     }
 
-    private void RefreshSelection()
+    private void RefreshVisualHints()
     {
+        if (_board is null)
+        {
+            return;
+        }
+
+        BoardCell? selectedNode = _selectedCoord is null ? null : _board.NodeAt(_selectedCoord.Value);
         foreach (var (coord, cell) in _cells)
         {
-            cell.SetTagged(_taggedCoords.Contains(coord), _poppedCoords.Contains(coord));
             cell.SetSelected(_selectedCoord == coord);
+            cell.SetObjectiveProgress(_objectiveCoords.Contains(coord), _clearedCoords.Contains(coord));
+
+            var node = _board.NodeAt(coord);
+            var isMergeCandidate =
+                _selectedCoord is not null &&
+                _selectedCoord.Value != coord &&
+                selectedNode is not null &&
+                _selectedCoord.Value.DistanceTo(coord) == 1 &&
+                selectedNode?.Type == node.Type &&
+                node.Type != NodeType.Bulwark;
+            var isTriggerEligible = node.Type != NodeType.Bulwark && node.Pressure >= 50;
+
+            cell.SetInteractionHints(isMergeCandidate, isTriggerEligible);
         }
     }
 }

@@ -11,9 +11,8 @@ public sealed class ActionResolver
     private const string MergeAdjacencyReason = "Merge requires adjacent nodes.";
     private const string MergeTypeReason = "Merge requires nodes of the same type.";
     private const string MergeBulwarkReason = "Bulwarks cannot be merged.";
-    private const string MergeOverflowReason = "Merge cannot exceed 100 total pressure.";
     private const string VentRedirectReason = "Vent redirect requires a vent target.";
-    private const string TriggerEarlyPressureReason = "Trigger early requires pressure 75 or higher.";
+    private const string TriggerEarlyPressureReason = "Trigger early requires pressure 50 or higher.";
     private const string TriggerEarlyBulwarkReason = "Bulwarks cannot be triggered early.";
 
     private readonly ChainResolver _chainResolver;
@@ -62,11 +61,6 @@ public sealed class ActionResolver
             throw new InvalidActionException(MergeTypeReason);
         }
 
-        if (nodeA.Pressure + nodeB.Pressure > 100)
-        {
-            throw new InvalidActionException(MergeOverflowReason);
-        }
-
         var clearedNode = nodeA with
         {
             Type = NodeType.Cell,
@@ -74,7 +68,9 @@ public sealed class ActionResolver
             Facing = null
         };
 
-        var mergedPressure = nodeA.Pressure + nodeB.Pressure;
+        // Excess pressure is intentionally discarded to keep merges readable
+        // and to make "over-cap" setup moves legal in Phase 1.
+        var mergedPressure = Math.Min(100, nodeA.Pressure + nodeB.Pressure);
         var mergedNode = nodeB with { Pressure = mergedPressure };
 
         return board
@@ -101,7 +97,7 @@ public sealed class ActionResolver
             throw new InvalidActionException(TriggerEarlyBulwarkReason);
         }
 
-        if (targetNode.Pressure < 75)
+        if (targetNode.Pressure < 50)
         {
             throw new InvalidActionException(TriggerEarlyPressureReason);
         }

@@ -113,8 +113,7 @@ public sealed class BruteForceSolver
                     }
 
                     var neighborNode = board.NodeAt(neighbor);
-                    if (neighborNode.Type == node.Type &&
-                        node.Pressure + neighborNode.Pressure <= 100)
+                    if (neighborNode.Type == node.Type)
                     {
                         yield return new MergeAction(coord, neighbor);
                     }
@@ -129,7 +128,7 @@ public sealed class BruteForceSolver
                 }
             }
 
-            if (node.Type != NodeType.Bulwark && node.Pressure >= 75)
+            if (node.Type != NodeType.Bulwark && node.Pressure >= 50)
             {
                 yield return new TriggerEarlyAction(coord);
             }
@@ -158,11 +157,11 @@ public sealed class BruteForceSolver
         builder.Append('|');
         builder.Append((int)state.Status);
         builder.Append('|');
-        foreach (var poppedCoord in state.PoppedTargetCoords.OrderBy(coord => coord.Q).ThenBy(coord => coord.R))
+        foreach (var clearedCoord in state.ClearedCoords.OrderBy(coord => coord.Q).ThenBy(coord => coord.R))
         {
-            builder.Append(poppedCoord.Q);
+            builder.Append(clearedCoord.Q);
             builder.Append(',');
-            builder.Append(poppedCoord.R);
+            builder.Append(clearedCoord.R);
             builder.Append(';');
         }
         builder.Append('|');

@@ -9,9 +9,11 @@ public sealed record Phase1LevelDefinition(
     string DisplayName,
     GameBoard Board,
     int MoveCap,
-    TaggedClusterObjective Objective,
+    LevelObjective Objective,
     int SolverMaxDepth,
-    int MinimumDistinctSolutions)
+    int MinimumDistinctSolutions,
+    IReadOnlyList<PressureChain.Core.Actions.PlayerAction> DemonstrationActions,
+    int MinimumDemonstratedWaveCount)
 {
     public LevelState CreateInitialState()
     {
@@ -20,7 +22,7 @@ public sealed record Phase1LevelDefinition(
             MovesRemaining: MoveCap,
             Objective: Objective,
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
     }
 }

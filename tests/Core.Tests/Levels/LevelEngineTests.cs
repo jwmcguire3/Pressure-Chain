@@ -24,9 +24,9 @@ public sealed class LevelEngineTests
                 (Center, CreateNode(NodeType.Vent, 0, facing: HexDirection.E)),
                 (East, CreateNode(NodeType.Cell, 10))),
             MovesRemaining: 5,
-            Objective: CreateObjective(East),
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         for (var move = 0; move < 5; move++)
@@ -39,24 +39,29 @@ public sealed class LevelEngineTests
     }
 
     [Fact]
-    public void PlayAction_ObjectiveClearedInOneMove_WinsImmediatelyAndPreservesNineMoves()
+    public void PlayAction_ClearingAllCellsAcrossActions_WinsImmediatelyAndPreservesRemainingMoves()
     {
+        var first = new HexCoord(0, 0);
+        var second = new HexCoord(1, 0);
+        var third = new HexCoord(4, 0);
         var state = new LevelState(
             Board: CreateBoard(
-                (West, CreateNode(NodeType.Vent, 95, facing: HexDirection.E, connections: OpenOnly(HexDirection.E))),
-                (Center, CreateNode(NodeType.Amplifier, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
-                (East, CreateNode(NodeType.Vent, 95, facing: HexDirection.W, connections: OpenOnly(HexDirection.W)))),
-            MovesRemaining: 10,
-            Objective: CreateObjective(West, Center, East),
+                (first, CreateNode(NodeType.Cell, 20)),
+                (second, CreateNode(NodeType.Cell, 30)),
+                (third, CreateNode(NodeType.Cell, 50))),
+            MovesRemaining: 3,
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
-        state = _engine.PlayAction(state, new TriggerEarlyAction(West));
+        state = _engine.PlayAction(state, new MergeAction(first, second));
+        state = _engine.PlayAction(state, new TriggerEarlyAction(second));
+        state = _engine.PlayAction(state, new TriggerEarlyAction(third));
 
         Assert.Equal(LevelStatus.Won, state.Status);
-        Assert.Equal(9, state.MovesRemaining);
-        Assert.Equal(3, state.PoppedTargetCoords.Count);
+        Assert.Equal(0, state.MovesRemaining);
+        Assert.Equal(3, state.ClearedCoords.Count);
     }
 
     [Fact]
@@ -68,9 +73,9 @@ public sealed class LevelEngineTests
                 (Center, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
                 (East, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W)))),
             MovesRemaining: 5,
-            Objective: CreateObjective(West, Center, East),
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         var result = _engine.PlayAction(state, new TriggerEarlyAction(West));
@@ -89,9 +94,9 @@ public sealed class LevelEngineTests
                 (Center, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
                 (East, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W)))),
             MovesRemaining: 5,
-            Objective: CreateObjective(West),
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
 
         engine.PlayAction(state, new TriggerEarlyAction(West));
@@ -109,9 +114,9 @@ public sealed class LevelEngineTests
                 (Center, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W, HexDirection.E))),
                 (East, CreateNode(NodeType.Cell, 90, connections: OpenOnly(HexDirection.W)))),
             MovesRemaining: 5,
-            Objective: CreateObjective(West),
+            Objective: CreateObjective(NodeType.Cell),
             ScoreAccumulated: 0,
-            PoppedTargetCoords: Array.Empty<HexCoord>(),
+            ClearedCoords: Array.Empty<HexCoord>(),
             Status: LevelStatus.InProgress);
         var action = new TriggerEarlyAction(West);
 
@@ -121,7 +126,7 @@ public sealed class LevelEngineTests
         Assert.Equal(defaultResult.MovesRemaining, nullLoggerResult.MovesRemaining);
         Assert.Equal(defaultResult.ScoreAccumulated, nullLoggerResult.ScoreAccumulated);
         Assert.Equal(defaultResult.Status, nullLoggerResult.Status);
-        Assert.Equal(defaultResult.PoppedTargetCoords, nullLoggerResult.PoppedTargetCoords);
+        Assert.Equal(defaultResult.ClearedCoords, nullLoggerResult.ClearedCoords);
         Assert.Equal(defaultResult.Board.Coords, nullLoggerResult.Board.Coords);
         foreach (var coord in defaultResult.Board.Coords)
         {
@@ -166,9 +171,9 @@ public sealed class LevelEngineTests
         return mask;
     }
 
-    private static TaggedClusterObjective CreateObjective(params HexCoord[] coords)
+    private static ClearAllOfTypeObjective CreateObjective(NodeType targetType)
     {
-        return new TaggedClusterObjective("Test cluster", coords);
+        return new ClearAllOfTypeObjective(targetType);
     }
 
     private sealed class RecordingActionLogger : IActionLogger

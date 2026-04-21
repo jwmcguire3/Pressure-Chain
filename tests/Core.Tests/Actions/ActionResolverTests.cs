@@ -30,15 +30,16 @@ public sealed class ActionResolverTests
     }
 
     [Fact]
-    public void Apply_MergePastOneHundred_Throws()
+    public void Apply_MergePastOneHundred_ClampsAndDiscardsExcessPressure()
     {
         var board = CreateBoard(
             (Center, CreateNode(NodeType.Cell, 70)),
             (East, CreateNode(NodeType.Cell, 60)));
 
-        var exception = Assert.Throws<InvalidActionException>(() => _resolver.Apply(board, new MergeAction(Center, East)));
+        var result = _resolver.Apply(board, new MergeAction(Center, East));
 
-        Assert.Equal("Merge cannot exceed 100 total pressure.", exception.Reason);
+        Assert.Equal(0, result.NodeAt(Center).Pressure);
+        Assert.Equal(100, result.NodeAt(East).Pressure);
     }
 
     [Fact]
@@ -78,11 +79,21 @@ public sealed class ActionResolverTests
     [Fact]
     public void Apply_TriggerEarlyBelowCriticalPressure_Throws()
     {
-        var board = CreateBoard((Center, CreateNode(NodeType.Cell, 74)));
+        var board = CreateBoard((Center, CreateNode(NodeType.Cell, 49)));
 
         var exception = Assert.Throws<InvalidActionException>(() => _resolver.Apply(board, new TriggerEarlyAction(Center)));
 
-        Assert.Equal("Trigger early requires pressure 75 or higher.", exception.Reason);
+        Assert.Equal("Trigger early requires pressure 50 or higher.", exception.Reason);
+    }
+
+    [Fact]
+    public void Apply_TriggerEarlyAtCriticalPressure_IsAllowed()
+    {
+        var board = CreateBoard((Center, CreateNode(NodeType.Cell, 50)));
+
+        var result = _resolver.Apply(board, new TriggerEarlyAction(Center));
+
+        Assert.Equal(13, result.NodeAt(Center).Pressure);
     }
 
     [Fact]

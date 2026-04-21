@@ -112,7 +112,7 @@ public sealed class JsonFileActionLogger : IActionLogger
             ScoreAccumulated: state.ScoreAccumulated,
             Status: state.Status.ToString(),
             Objective: state.Objective.ToString() ?? state.Objective.GetType().Name,
-            PoppedTargetCoords: state.PoppedTargetCoords.Select(FormatCoord).ToArray(),
+            ClearedCoords: state.ClearedCoords.Select(FormatCoord).ToArray(),
             Board: state.Board.Coords
                 .Select(coord =>
                 {
@@ -167,7 +167,7 @@ public sealed class JsonFileActionLogger : IActionLogger
         int ScoreAccumulated,
         string Status,
         string Objective,
-        string[] PoppedTargetCoords,
+        string[] ClearedCoords,
         NodeSnapshot[] Board);
 
     private sealed record NodeSnapshot(
